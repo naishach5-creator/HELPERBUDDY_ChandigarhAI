@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HELPERBUDDY CHANDIGARH</title>
+
+<style>
+body{
+  font-family:Segoe UI,Arial;
+  background:linear-gradient(135deg,#7b2ff7,#9f7aea,#c77dff);
+  margin:0;
+}
+header{
+  background:linear-gradient(90deg,#5a189a,#7b2ff7);
+  color:white;
+  padding:18px;
+  text-align:center;
+}
+nav{
+  background:#ede9fe;
+  padding:10px;
+  text-align:center;
+}
+nav button{
+  margin:5px;
+  padding:8px 16px;
+  border:none;
+  border-radius:6px;
+  background:#7b2ff7;
+  color:white;
+  cursor:pointer;
+}
+section{display:none;padding:20px}
+.active{display:block}
+.card{
+  background:white;
+  padding:12px;
+  margin:10px 0;
+  border-left:5px solid #7b2ff7;
+  border-radius:6px;
+}
+input,select{
+  width:100%;
+  padding:8px;
+  margin:6px 0;
+}
+.deleteBtn{
+  background:#e63946;
+  color:white;
+  border:none;
+  padding:6px 10px;
+  border-radius:5px;
+  cursor:pointer;
+}
+.stars span{
+  cursor:pointer;
+  font-size:20px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h2>HELPERBUDDY CHANDIGARH</h2>
+  <small>AI that helps find helpers</small>
+</header>
+
+<nav>
+  <button onclick="showPage('search')">Find Helper</button>
+  <button onclick="showPage('add')">Add Helper</button>
+</nav>
+
+<section id="search" class="active">
+  <h3>Find a Helper</h3>
+
+  <label>Your Sector</label>
+  <select id="sector"></select>
+
+  <label>Work Needed</label>
+  <select id="work">
+    <option>Cleaning</option>
+    <option>Utensils</option>
+    <option>Babysitting</option>
+    <option>Household Tasks</option>
+  </select>
+
+  <button onclick="searchHelpers()">Search</button>
+  <div id="results"></div>
+</section>
+
+<section id="add">
+  <h3>Add Helper</h3>
+
+  <input id="name" placeholder="Name">
+  <input id="age" type="number" placeholder="Age">
+  <input id="phone" placeholder="Phone">
+
+  <label>Sector</label>
+  <select id="addSector"></select>
+
+  <label>Work</label>
+  <select id="addWork">
+    <option>Cleaning</option>
+    <option>Utensils</option>
+    <option>Babysitting</option>
+    <option>Household Tasks</option>
+  </select>
+
+  <button onclick="addHelper()">Add Helper</button>
+</section>
+
+<script>
+/* ---------- CONSTANTS ---------- */
+const NAMES = ["Sunita","Rekha","Anita","Pooja","Kavita","Neha","Suman","Geeta","Rani","Meena"];
+const WORKS = ["Cleaning","Utensils","Babysitting","Household Tasks"];
+const STORAGE_KEY = "helperbuddy_helpers";
+
+/* ---------- DOM REFERENCES ---------- */
+const nameInput = document.getElementById("name");
+const ageInput = document.getElementById("age");
+const phoneInput = document.getElementById("phone");
+const sectorSelect = document.getElementById("sector");
+const addSectorSelect = document.getElementById("addSector");
+const workSelect = document.getElementById("work");
+const addWorkSelect = document.getElementById("addWork");
+const resultsDiv = document.getElementById("results");
+
+/* ---------- DATA ---------- */
+let helpers = [];
+
+/* ---------- SAFE INIT (RUNS ONCE) ---------- */
+function initData(){
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if(stored){
+    helpers = JSON.parse(stored);
+    return;
+  }
+
+  let id = 1;
+  for(let sector=1; sector<=50; sector++){
+    for(let work of WORKS){
+      for(let i=0;i<4;i++){
+        // generate 2–5 random ratings between 1–5
+        const fakeRatings = Array.from(
+          {length: Math.floor(Math.random()*4)+2}, 
+          () => Math.floor(Math.random()*5)+1
+        );
+
+        helpers.push({
+          id: id++,
+          name: NAMES[id % NAMES.length],
+          age: 22 + (id % 15),
+          phone: "9" + (800000000 + id),
+          sector: sector,
+          work: work,
+          ratings: fakeRatings
+        });
+      }
+    }
+  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(helpers));
+}
+initData();
+
+/* ---------- SECTOR DROPDOWNS ---------- */
+for(let i=1;i<=50;i++){
+  sectorSelect.innerHTML += `<option>${i}</option>`;
+  addSectorSelect.innerHTML += `<option>${i}</option>`;
+}
+
+/* ---------- PAGE SWITCH ---------- */
+function showPage(id){
+  document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+/* ---------- ADD HELPER ---------- */
+function addHelper(){
+  const n = nameInput.value.trim();
+  const a = ageInput.value.trim();
+  const p = phoneInput.value.trim();
+
+  if(!n || !a || !p){
+    alert("Fill all fields");
+    return;
+  }
+
+  // prevent duplicate phone numbers
+  if(helpers.some(h => h.phone === p)){
+    alert("Helper with this phone already exists ❌");
+    return;
+  }
+
+  helpers.push({
+    id: Date.now(),
+    name: n,
+    age: Number(a),
+    phone: p,
+    sector: Number(addSectorSelect.value),
+    work: addWorkSelect.value,
+    ratings: [Math.floor(Math.random()*5)+1] // give new helper one fake rating
+  });
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(helpers));
+  alert("Helper added successfully ✅");
+
+  nameInput.value = "";
+  ageInput.value = "";
+  phoneInput.value = "";
+}
+
+/* ---------- SEARCH (SAME SECTOR, 3–4 RESULTS) ---------- */
+function searchHelpers(){
+  resultsDiv.innerHTML = "";
+  const userSector = Number(sectorSelect.value);
+
+  let list = helpers.filter(h => 
+    h.work === workSelect.value && h.sector === userSector
+  );
+
+  // remove duplicates by phone
+  const seen = new Set();
+  list = list.filter(h => {
+    if(seen.has(h.phone)) return false;
+    seen.add(h.phone);
+    return true;
+  });
+
+  // pick only up to 4 results (random sample if more exist)
+  if(list.length > 4){
+    list = list.sort(() => Math.random() - 0.5).slice(0,4);
+  }
+
+  if(list.length === 0){
+    resultsDiv.innerHTML = "<b>0 helpers found</b>";
+    return;
+  }
+
+  list.forEach(renderHelper);
+}
+
+/* ---------- RENDER ---------- */
+function renderHelper(h){
+  const avg = h.ratings.length
+    ? (h.ratings.reduce((a,b)=>a+b)/h.ratings.length).toFixed(1)
+    : "No ratings";
+
+  resultsDiv.innerHTML += `
+    <div class="card">
+      <b>${h.name}</b><br>
+      Age: ${h.age}<br>
+      Phone: ${h.phone}<br>
+      Sector: ${h.sector}<br>
+      Work: ${h.work}<br>
+      ⭐ ${avg}
+      <div class="stars">
+        ${[1,2,3,4,5].map(n=>`<span onclick="rate(${h.id},${n})">★</span>`).join("")}
+      </div>
+      <button class="deleteBtn" onclick="deleteHelper(${h.id})">Delete</button>
+    </div>`;
+}
+
+/* ---------- RATE ---------- */
+function rate(id,stars){
+  const h = helpers.find(x=>x.id===id);
+  h.ratings.push(stars);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(helpers));
+  searchHelpers();
+}
+
+/* ---------- DELETE ---------- */
+function deleteHelper(id){
+  if(!confirm("Delete helper?")) return;
+  helpers = helpers.filter(h=>h.id!==id);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(helpers));
+  searchHelpers();
+}
+</script>
+
+</body>
+</html>
